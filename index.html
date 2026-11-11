@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Озвучка чата Twitch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--ink:#15121c;--panel:#1d1828;--well:#100d17;--line:#382f4d;--txt:#efe9ff;--mut:#a99ec7;--vio:#9146ff;--vio2:#b48cff;--amb:#ffb347;--bad:#ff6b6b}
+*{box-sizing:border-box}
+body{margin:0;padding:28px 18px 40px;background:var(--ink);color:var(--txt);font:15px/1.5 "Onest","Segoe UI",system-ui,sans-serif}
+header,.app{max-width:1080px;margin:0 auto}
+h1{margin:0;font-size:38px;line-height:1.1;font-weight:800;letter-spacing:-.01em}
+header p{margin:6px 0 18px;color:var(--mut)}
+.note{margin-bottom:20px;padding:12px 16px;border-left:4px solid var(--amb);background:#2a2030;border-radius:6px}
+.note.ok{border-color:var(--vio2);background:#221a33}
+.app{display:grid;grid-template-columns:minmax(320px,440px) 1fr;gap:28px;align-items:start}
+@media(max-width:860px){.app{grid-template-columns:1fr}}
+.panel{background:var(--panel);border-radius:14px;padding:20px}
+.panel section+section,details{margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}
+label,.lbl{display:block;margin:12px 0 4px;font-size:13px;color:var(--mut)}
+label:first-child{margin-top:0}
+input[type=text],select{width:100%;padding:10px 12px;background:var(--well);color:var(--txt);border:1px solid var(--line);border-radius:8px;font:inherit}
+input[type=range]{width:100%;accent-color:var(--vio)}
+.row{display:flex;gap:8px;align-items:center}
+.row>input{flex:1;min-width:0}
+.val{float:right;color:var(--txt)}
+.chk{display:flex;gap:10px;align-items:center;margin:10px 0 0;font-size:14px;color:var(--txt)}
+.chk input{accent-color:var(--vio);width:16px;height:16px}
+button{padding:10px 16px;border:0;border-radius:8px;background:#3b3250;color:var(--txt);font:inherit;font-weight:600;cursor:pointer}
+button:disabled{opacity:.45;cursor:default}
+.primary{background:var(--vio);color:#fff}
+.danger{background:var(--bad);color:#2a0d0d}
+.go{display:flex;gap:10px;margin-top:14px}
+.go .primary{flex:1}
+.state{display:flex;gap:10px;align-items:center;margin-top:12px;color:var(--mut);font-size:14px}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--mut)}
+.dot.wait{background:var(--amb)}
+.dot.on{background:var(--vio2);animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.35}}
+@media(prefers-reduced-motion:reduce){.dot.on{animation:none}}
+summary{cursor:pointer;font-weight:600}
+details>*:not(summary){margin-top:10px}
+.ign{display:flex;flex-direction:column;gap:6px;max-height:180px;overflow:auto}
+.ign div{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:var(--well);border-radius:8px}
+.ign button{padding:2px 10px;background:transparent;color:var(--bad)}
+.log{height:600px;overflow:auto;padding:16px;background:var(--well);border-radius:14px;word-break:break-word}
+.log:empty::before{content:"Здесь появятся сообщения чата. Введите канал и нажмите «Запустить».";color:var(--mut)}
+.log div{padding:3px 0}
+.log b{color:var(--vio2);font-weight:600}
+footer{max-width:1080px;margin:22px auto 0;color:var(--mut);font-size:13px}
+:focus-visible{outline:2px solid var(--vio2);outline-offset:2px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Озвучка чата Twitch</h1>
+  <p>Читает сообщения чата вслух голосами вашего браузера.</p>
+</header>
+<div style="max-width:1080px;margin:0 auto"><div id="note" class="note"></div></div>
+
+<div class="app">
+  <main class="panel">
+    <section>
+      <label for="channel">Канал</label>
+      <input type="text" id="channel" placeholder="Никнейм канала или ссылка" autocomplete="off">
+      <div class="go">
+        <button class="primary" id="start">Запустить</button>
+        <button class="danger" id="stop" disabled>Стоп</button>
+      </div>
+      <div class="state"><span class="dot" id="dot"></span><span id="stt">Готов</span></div>
+    </section>
+
+    <section>
+      <label for="vru">Голос: русские от Microsoft</label>
+      <select id="vru"></select>
+      <label for="vall">Голос: полный список, все языки</label>
+      <select id="vall"></select>
+      <div class="lbl" style="margin-top:8px">Озвучка использует голос, выбранный в любом из двух меню.</div>
+      <label class="chk"><input type="checkbox" id="uname"> Озвучивать никнейм зрителя</label>
+    </section>
+
+    <section>
+      <label for="vol">Громкость <span class="val" id="volv"></span></label>
+      <input type="range" id="vol" min="0" max="100" value="100">
+      <label for="spd">Скорость речи <span class="val" id="spdv"></span></label>
+      <input type="range" id="spd" min="-50" max="50" value="0">
+      <label for="testText">Проверка звука</label>
+      <div class="row">
+        <input type="text" id="testText" value="Проверка звука.">
+        <button id="test">Тест</button>
+      </div>
+    </section>
+
+    <details>
+      <summary>Фильтры и игнор-лист</summary>
+      <div class="row">
+        <label for="limit" style="margin:0;flex:1">Лимит символов</label>
+        <select id="limit" style="width:100px"><option>60</option><option selected>140</option><option>200</option><option>Выкл</option></select>
+      </div>
+      <label class="chk"><input type="checkbox" id="anti" checked> Резать спам смайликов (максимум 3 повтора)</label>
+      <label class="chk"><input type="checkbox" id="ment" checked> Вырезать упоминания (@ник)</label>
+      <div class="lbl">Не озвучивать этих пользователей</div>
+      <div class="row">
+        <input type="text" id="ignIn" placeholder="Никнейм" autocomplete="off">
+        <button id="ignAdd">Добавить</button>
+      </div>
+      <div class="ign" id="ign"></div>
+    </details>
+  </main>
+
+  <div class="log" id="log" aria-live="off"></div>
+</div>
+
+<footer>Страница ничего не отправляет на сервер: чат читается напрямую из Twitch, анонимно и только на чтение, а озвучка работает на голосах вашего браузера.</footer>
+
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const KEYS=['channel','vol','spd','limit'],CHK=['uname','anti','ment'];
+let ignore=['nightbot','streamlabs'],wanted=null,cur=null,voices=[],ws=null,running=false,retry=null,pending=0;
+
+/* ---------- сохранение настроек ---------- */
+function save(){try{const s={ign:ignore,voice:wanted};KEYS.forEach(k=>s[k]=$(k).value);CHK.forEach(k=>s[k]=$(k).checked);localStorage.setItem('twitchTTS',JSON.stringify(s))}catch(e){}}
+function load(){try{const s=JSON.parse(localStorage.getItem('twitchTTS')||'{}');KEYS.forEach(k=>s[k]!=null&&($(k).value=s[k]));CHK.forEach(k=>s[k]!=null&&($(k).checked=s[k]));if(Array.isArray(s.ign))ignore=s.ign;if(s.voice)wanted=s.voice}catch(e){}}
+function labels(){$('volv').textContent=$('vol').value+'%';const v=+$('spd').value;$('spdv').textContent=(v>0?'+':'')+v+'%'}
+
+/* ---------- голоса ---------- */
+function fillVoices(){
+  voices=speechSynthesis.getVoices();
+  if(!voices.length)return;
+  const ruMs=voices.filter(v=>/^ru/i.test(v.lang)&&/Microsoft/i.test(v.name));
+  const opt=(v,full)=>`<option value="${esc(v.voiceURI)}">${esc(v.name)}${full?' — '+esc(v.lang):''}</option>`;
+  $('vru').innerHTML=ruMs.length?'<option value="">Выберите голос</option>'+ruMs.map(v=>opt(v)).join(''):'<option value="">Русских голосов Microsoft нет, откройте в Edge</option>';
+  $('vall').innerHTML='<option value="">Выберите голос</option>'+[...voices].sort((a,b)=>a.lang.localeCompare(b.lang)||a.name.localeCompare(b.name)).map(v=>opt(v,1)).join('');
+  const hit=voices.find(v=>v.voiceURI===wanted);
+  const def=ruMs.find(v=>/Svetlana|Светлана/i.test(v.name))||ruMs[0]||voices.find(v=>/^ru/i.test(v.lang))||null;
+  cur=(hit||def||{}).voiceURI||null;
+  syncSel();
+}
+function syncSel(){['vru','vall'].forEach(id=>{$(id).value=cur||'';if($(id).selectedIndex<0)$(id).selectedIndex=0})}
+function pick(e){if(e.target.value){wanted=cur=e.target.value;syncSel();save()}}
+
+/* ---------- озвучка ---------- */
+function ding(){try{const c=new AudioContext(),o=c.createOscillator(),g=c.createGain();o.frequency.value=880;g.gain.value=.15;o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+.25)}catch(e){}}
+function speak(text){
+  if(!text.trim())return;
+  if(!speechSynthesis.speaking&&!speechSynthesis.pending)pending=0;
+  if(pending>12)return;
+  const u=new SpeechSynthesisUtterance(text);
+  const v=voices.find(x=>x.voiceURI===cur);
+  if(v){u.voice=v;u.lang=v.lang}else u.lang='ru-RU';
+  u.volume=$('vol').value/100;
+  u.rate=1+$('spd').value/100;
+  pending++;
+  u.onend=()=>{pending=Math.max(0,pending-1)};
+  u.onerror=e=>{pending=Math.max(0,pending-1);if(e.error!=='canceled'&&e.error!=='interrupted')ding()};
+  speechSynthesis.speak(u);
+}
+
+/* ---------- чат и фильтры ---------- */
+function log(u,m){const d=document.createElement('div'),b=document.createElement('b');b.textContent=u+': ';d.append(b,m);const box=$('log');box.append(d);while(box.children.length>300)box.firstChild.remove();box.scrollTop=box.scrollHeight}
+function clean(t,u){
+  t=t.trim();
+  if($('ment').checked)t=t.split(/\s+/).filter(w=>!w.startsWith('@')).join(' ');
+  if($('anti').checked){const c={};for(const w of t.split(/\s+/)){const k=w.toLowerCase();c[k]=(c[k]||0)+1;if(c[k]>3)return u+' спамит смайликами'}}
+  const l=$('limit').value;
+  if(l!=='Выкл'&&t.length>+l)t=t.slice(0,+l)+' и так далее';
+  return t.trim();
+}
+function renderIgnore(){
+  const box=$('ign');box.textContent='';
+  ignore.forEach(n=>{const r=document.createElement('div'),s=document.createElement('span'),b=document.createElement('button');
+    s.textContent=n;b.textContent='Убрать';b.setAttribute('aria-label','Убрать '+n+' из игнор-листа');
+    b.onclick=()=>{ignore=ignore.filter(x=>x!==n);renderIgnore();save()};
+    r.append(s,b);box.append(r)});
+}
+function addIgnore(){const n=$('ignIn').value.trim().toLowerCase().replace(/^@/,'');if(n&&!ignore.includes(n)){ignore.push(n);$('ignIn').value='';renderIgnore();save()}}
+
+/* ---------- подключение к Twitch ---------- */
+function status(t,s){$('stt').textContent=t;$('dot').className='dot '+s}
+function ui(on){$('start').disabled=on;$('stop').disabled=!on;$('start').textContent=on?'Работает':'Запустить'}
+function handle(line){
+  if(!line)return;
+  if(line.startsWith('PING')){ws.send('PONG :tmi.twitch.tv');return}
+  if(/ 366 | JOIN #/.test(line)){status('Слушаю #'+$('channel').dataset.ch,'on');return}
+  const m=line.match(/^(?:@\S+ )?:([^!\s]+)!\S* PRIVMSG #\S+ :(.*)$/);
+  if(!m||!running)return;
+  const u=m[1],msg=m[2].replace(/^\u0001ACTION |\u0001$/g,'').trim();
+  if(!msg||msg.startsWith('!')||ignore.includes(u.toLowerCase()))return;
+  log(u,msg);
+  const c=clean(msg,u);
+  if(c)speak($('uname').checked?`${u} пишет ${c}`:c);
+}
+function connect(ch){
+  ws=new WebSocket('wss://irc-ws.chat.twitch.tv:443');
+  ws.onopen=()=>{ws.send('PASS SCHMOOPIIE');ws.send('NICK justinfan'+(10000+Math.floor(Math.random()*89999)));ws.send('JOIN #'+ch)};
+  ws.onmessage=e=>String(e.data).split('\r\n').forEach(handle);
+  ws.onclose=()=>{if(running){status('Переподключение…','wait');retry=setTimeout(()=>running&&connect(ch),3000)}};
+}
+function start(){
+  const ch=$('channel').value.trim().toLowerCase().replace(/^.*twitch\.tv\//,'').replace(/[\/?#].*$/,'');
+  if(!ch){$('channel').focus();return}
+  $('channel').dataset.ch=ch;
+  running=true;ui(true);status('Подключение…','wait');
+  speak('Система активна');
+  connect(ch);
+}
+function stop(){
+  running=false;clearTimeout(retry);
+  if(ws){ws.onclose=null;ws.close();ws=null}
+  speechSynthesis.cancel();pending=0;
+  ui(false);status('Остановлено','');
+}
+
+/* ---------- запуск страницы ---------- */
+const note=$('note');
+if(!('speechSynthesis' in window)){
+  note.textContent='Этот браузер не поддерживает озвучку. Откройте страницу в Microsoft Edge.';
+  $('start').disabled=true;$('test').disabled=true;
+}else{
+  const edge=/Edg\//.test(navigator.userAgent);
+  note.className='note'+(edge?' ok':'');
+  note.textContent=edge
+    ?'Вы в Microsoft Edge: доступны все голоса Microsoft, включая естественные русские.'
+    :'Откройте страницу в Microsoft Edge: только там есть все голоса Microsoft (естественные русские и других языков). В других браузерах список голосов короче.';
+  load();labels();renderIgnore();
+  speechSynthesis.onvoiceschanged=fillVoices;
+  fillVoices();setTimeout(fillVoices,600);setTimeout(fillVoices,2000);
+  $('vru').onchange=$('vall').onchange=pick;
+  $('start').onclick=start;$('stop').onclick=stop;
+  $('test').onclick=()=>{const t=$('testText').value;log('Тест_системы',t);speak(t)};
+  $('ignAdd').onclick=addIgnore;
+  $('ignIn').onkeydown=e=>{if(e.key==='Enter')addIgnore()};
+  $('channel').onkeydown=e=>{if(e.key==='Enter'&&!running)start()};
+  $('vol').oninput=$('spd').oninput=labels;
+  document.addEventListener('input',save);document.addEventListener('change',save);
+}
+</script>
+</body>
+</html>
